@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MD Player - PWA Video Player dengan Penyimpanan Eksternal</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        #app {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+        
+        .input-container {
+            display: flex;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        input, select {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        button {
+            padding: 12px 20px;
+            background: #ff4081;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            background: #f50057;
+        }
+        
+        button.secondary {
+            background: #4CAF50;
+        }
+        
+        button.secondary:hover {
+            background: #45a049;
+        }
+        
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%; /* Aspect ratio 16:9 */
+            height: 0;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            background: #000;
+        }
+        
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .video-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .video-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        
+        .video-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .video-thumb {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+        }
+        
+        .video-info {
+            padding: 15px;
+        }
+        
+        .video-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .video-duration {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #ff4081;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        .pwa-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #ff4081;
+        }
+        
+        .source-config {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        
+        .source-config h3 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .config-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            font-size: 1.2rem;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .video-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .input-container, .config-input {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1><i class="fas fa-play-circle"></i> MD Player</h1>
+            <p class="tagline">Pemutar Video YouTube dengan Penyimpanan Eksternal</p>
+            
+            <div class="input-container">
+                <input 
+                    v-model="videoUrl" 
+                    @keyup.enter="loadVideo"
+                    placeholder="Masukkan URL video YouTube"
+                >
+                <button @click="loadVideo"><i class="fas fa-play"></i> Putar</button>
+            </div>
+        </header>
+        
+        <div class="video-container" v-if="currentVideoId">
+            <iframe 
+                :src="'https://www.youtube.com/embed/' + currentVideoId + '?autoplay=1'" 
+                frameborder="0" 
+                allowfullscreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            ></iframe>
+        </div>
+        
+        <div class="source-config">
+            <h3><i class="fas fa-database"></i> Konfigurasi Sumber Video</h3>
+            <div class="config-input">
+                <input v-model="externalSourceUrl" placeholder="URL JSON sumber video eksternal">
+                <button class="secondary" @click="loadExternalVideos"><i class="fas fa-download"></i> Muat Video</button>
+            </div>
+            <p>Contoh: https://api.npoint.io/6c13c5e70f0fb943c0b7</p>
+        </div>
+        
+        <div v-if="loading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Memuat video...
+        </div>
+        
+        <div v-if="error" class="error">
+            <i class="fas fa-exclamation-triangle"></i> {{ error }}
+        </div>
+        
+        <div class="video-list" v-else>
+            <div class="video-card" v-for="video in videoList" :key="video.id" @click="playVideo(video.id)">
+                <img :src="'https://img.youtube.com/vi/' + video.id + '/mqdefault.jpg'" :alt="video.title" class="video-thumb">
+                <div class="video-info">
+                    <div class="video-title">{{ video.title }}</div>
+                    <div class="video-duration">{{ video.duration }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3><i class="fas fa-info-circle"></i> Cara Menggunakan MD Player</h3>
+            <ol>
+                <li>Gunakan input URL di atas untuk memutar video YouTube tertentu, atau</li>
+                <li>Masukkan URL JSON yang berisi daftar video di konfigurasi sumber eksternal</li>
+                <li>Klik tombol "Muat Video" untuk mengambil data dari sumber eksternal</li>
+                <li>Klik pada kartu video yang ingin ditonton</li>
+                <li>Video akan dimuat dan diputar secara otomatis</li>
+            </ol>
+        </div>
+        
+        <div class="pwa-features">
+            <div class="feature">
+                <div class="feature-icon"><i class="fas fa-external-link-alt"></i></div>
+                <h3>Sumber Eksternal</h3>
+                <p>Mendukung penyimpanan data video di repo GitHub atau layanan eksternal lainnya</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon"><i class="fas fa-mobile-alt"></i></div>
+                <h3>Responsif</h3>
+                <p>Beradaptasi dengan sempurna di desktop, tablet, dan perangkat mobile</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                <h3>PWA</h3>
+                <p>Dapat diinstall dan bekerja seperti aplikasi native</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>MD Player - Progressive Web App dengan Vue.js & Penyimpanan Eksternal © 2023</p>
+        </footer>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                videoUrl: '',
+                currentVideoId: '',
+                externalSourceUrl: 'https://api.npoint.io/6c13c5e70f0fb943c0b7',
+                videoList: [],
+                loading: false,
+                error: ''
+            },
+            mounted() {
+                // Memuat video dari sumber eksternal saat aplikasi dimulai
+                this.loadExternalVideos();
+            },
+            methods: {
+                loadVideo() {
+                    if (!this.videoUrl) {
+                        this.error = 'Harap masukkan URL video YouTube';
+                        return;
+                    }
+                    
+                    // Ekstrak ID video dari URL YouTube
+                    const videoId = this.extractVideoId(this.videoUrl);
+                    
+                    if (videoId) {
+                        this.currentVideoId = videoId;
+                        this.error = '';
+                    } else {
+                        this.error = 'URL YouTube tidak valid. Silakan masukkan URL yang benar.';
+                    }
+                },
+                
+                extractVideoId(url) {
+                    // Fungsi untuk mengekstrak ID video dari berbagai format URL YouTube
+                    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+                    return match ? match[1] : null;
+                },
+                
+                playVideo(videoId) {
+                    this.currentVideoId = videoId;
+                    this.error = '';
+                    // Scroll ke pemutar video
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+                
+                async loadExternalVideos() {
+                    if (!this.externalSourceUrl) {
+                        this.error = 'Harap masukkan URL sumber video eksternal';
+                        return;
+                    }
+                    
+                    this.loading = true;
+                    this.error = '';
+                    
+                    try {
+                        // Mengambil data dari sumber eksternal
+                        const response = await fetch(this.externalSourceUrl);
+                        if (!response.ok) throw new Error('Gagal mengambil data dari sumber eksternal');
+                        
+                        const data = await response.json();
+                        
+                        if (data.videos && Array.isArray(data.videos)) {
+                            this.videoList = data.videos;
+                        } else {
+                            throw new Error('Format data tidak valid. Pastikan data memiliki properti "videos" yang berisi array.');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.error = error.message || 'Gagal memuat video dari sumber eksternal.';
+                        
+                        // Fallback ke data default jika sumber eksternal gagal dimuat
+                        this.videoList = [
+                            { id: 'dQw4w9WgXcQ', title: 'Contoh Video 1 - Musik', duration: '3:45' },
+                            { id: 'jNQXAC9IVRw', title: 'Contoh Video 2 - Keindahan Alam', duration: '4:20' },
+                            { id: 'LXb3EKWsInQ', title: 'Contoh Video 3 - Travel', duration: '5:30' }
+                        ];
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+  </html>
