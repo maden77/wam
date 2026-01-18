@@ -1,14 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Three.js Car Game</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Ferrari 3D Racing - Android</title>
     <style>
-        body { margin: 0; overflow: hidden; }
-        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: white; }
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; }
+        #ui-layer { position: absolute; top: 20px; left: 20px; color: white; font-family: Arial; font-weight: bold; font-size: 24px; text-shadow: 2px 2px 4px #000; pointer-events: none; }
+        
+        /* Tombol Kontrol Android */
+        #controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-around; align-items: center; padding: 0 10px; box-sizing: border-box; }
+        .btn { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; color: white; font-size: 24px; display: flex; justify-content: center; align-items: center; -webkit-user-select: none; user-select: none; }
+        .btn:active { background: rgba(255, 255, 255, 0.5); }
+        .column { display: flex; flex-direction: column; gap: 20px; }
     </style>
 </head>
 <body>
-    <div id="info">Gunakan Arrow Keys untuk Menyetir</div>
+    <div id="ui-layer">SKOR: 0</div>
+
+    <div id="controls">
+        <div id="btnLeft" class="btn">◀</div>
+        <div class="column">
+            <div id="btnUp" class="btn">▲</div>
+            <div id="btnDown" class="btn">▼</div>
+        </div>
+        <div id="btnRight" class="btn">▶</div>
+    </div>
+
     <script type="importmap">
         {
             "imports": {
