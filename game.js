@@ -1,110 +1,168 @@
 import * as THREE from 'three';
 
-// --- 1. SETUP SCENE ---
+// --- 1. UI & SETUP SCENE ---
+const scoreElement = document.createElement('div');
+scoreElement.style = "position:absolute; top:20px; left:20px; color:white; font-size:28px; font-family:Arial; font-weight:bold; text-shadow: 2px 2px 4px #000; z-index:100;";
+scoreElement.innerHTML = 'SKOR: 0';
+document.body.appendChild(scoreElement);
+
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb); // Langit biru
+scene.background = new THREE.Color(0x050510); // Malam gelap
+scene.fog = new THREE.Fog(0x050510, 10, 150);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Cahaya
-const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(5, 10, 5);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0x404040, 2));
+// Cahaya Lingkungan
+scene.add(new THREE.AmbientLight(0x404040, 0.5));
 
-// --- 2. OBJEK GAME ---
+// --- 2. MEMBUAT FERRARI KUNING ---
+const car = new THREE.Group();
 
-// Jalan (Track)
-const trackGeo = new THREE.PlaneGeometry(20, 2000);
-const trackMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-const track = new THREE.Mesh(trackGeo, trackMat);
+const yellowMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, metalness: 0.7, roughness: 0.2 });
+const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+const glassMat = new THREE.MeshStandardMaterial({ color: 0x222222, transparent: true, opacity: 0.6 });
+
+// Body
+const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 4), yellowMat);
+body.position.y = 0.4;
+car.add(body);
+
+const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.4, 1.5), glassMat);
+cabin.position.set(0, 0.8, 0);
+car.add(cabin);
+
+// Lampu Depan (Visual)
+const lightMesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), new THREE.MeshBasicMaterial({color: 0xffffff}));
+lightMesh.position.set(0.5, 0.4, -2);
+car.add(lightMesh.clone());
+lightMesh.position.x = -0.5;
+car.add(lightMesh);
+
+// Spotlights (Cahaya Nyata)
+const createHeadlight = (x) => {
+    const light = new THREE.SpotLight(0xffffff, 20, 40, Math.PI/6, 0.3);
+    light.position.set(x, 0.5, -2);
+    light.target.position.set(x, 0.5, -10);
+    car.add(light);
+    car.add(light.target);
+};
+createHeadlight(0.6);
+createHeadlight(-0.6);
+
+// Ban
+const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.4, 16);
+const wheelPos = [[-0.85, 0.35, 1.3], [0.85, 0.35, 1.3], [-0.85, 0.35, -1.3], [0.85, 0.35, -1.3]];
+wheelPos.forEach(pos => {
+    const w = new THREE.Mesh(wheelGeo, blackMat);
+    w.rotation.z = Math.PI / 2;
+    w.position.set(pos[0], pos[1], pos[2]);
+    car.add(w);
+});
+
+scene.add(car);
+
+// --- 3. JALAN & RINTANGAN ---
+const track = new THREE.Mesh(
+    new THREE.PlaneGeometry(20, 10000),
+    new THREE.MeshStandardMaterial({ color: 0x111111 })
+);
 track.rotation.x = -Math.PI / 2;
 scene.add(track);
 
-// Mobil (Menggunakan Box sebagai placeholder)
-const carGeo = new THREE.BoxGeometry(1.2, 0.6, 2.5);
-const carMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-const car = new THREE.Mesh(carGeo, carMat);
-car.position.y = 0.3;
-scene.add(car);
-
-// Rintangan (Obstacles)
 const obstacles = [];
-function createObstacle(zPos) {
-    const obsGeo = new THREE.BoxGeometry(2, 1, 2);
-    const obsMat = new THREE.MeshStandardMaterial({ color: 0xffff00 });
-    const obs = new THREE.Mesh(obsGeo, obsMat);
-    obs.position.set(Math.random() * 10 - 5, 0.5, zPos);
+for(let i=1; i<50; i++) {
+    const obs = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 3), new THREE.MeshStandardMaterial({color: 0xff3300}));
+    obs.position.set(Math.random() * 14 - 7, 0.75, -i * 60);
     scene.add(obs);
     obstacles.push(obs);
 }
 
-// Buat beberapa rintangan di depan
-for (let i = 1; i <= 10; i++) {
-    createObstacle(-i * 30);
-}
-
-// --- 3. LOGIKA KONTROL ---
-const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
-document.addEventListener('keydown', (e) => keys[e.code] = true);
-document.addEventListener('keyup', (e) => keys[e.code] = false);
-
-let speed = 0;
-const maxSpeed = 0.5;
-const acceleration = 0.01;
-const friction = 0.96;
-const turnSpeed = 0.04;
-
-// --- 4. GAME LOOP ---
-function update() {
-    // Akselerasi
-    if (keys.ArrowUp) speed += acceleration;
-    if (keys.ArrowDown) speed -= acceleration;
-    
-    // Batasi kecepatan & gesekan
-    speed *= friction;
-    if (speed > maxSpeed) speed = maxSpeed;
-    
-    // Pergerakan Mobil
-    car.translateZ(-speed);
-
-    // Belok (Hanya jika mobil bergerak)
-    if (Math.abs(speed) > 0.01) {
-        if (keys.ArrowLeft) car.rotation.y += turnSpeed;
-        if (keys.ArrowRight) car.rotation.y -= turnSpeed;
+// --- 4. SISTEM PARTIKEL ASAP ---
+const particles = [];
+function createSmoke() {
+    if (speed > 0.1) {
+        const pGeo = new THREE.SphereGeometry(Math.random() * 0.2, 8, 8);
+        const pMat = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.4 });
+        const p = new THREE.Mesh(pGeo, pMat);
+        const pos = new THREE.Vector3(0, 0.3, 2).applyMatrix4(car.matrixWorld);
+        p.position.copy(pos);
+        scene.add(p);
+        particles.push(p);
     }
-
-    // Cek Tabrakan (Bounding Box)
-    const carBox = new THREE.Box3().setFromObject(car);
-    obstacles.forEach(obs => {
-        const obsBox = new THREE.Box3().setFromObject(obs);
-        if (carBox.intersectsBox(obsBox)) {
-            console.log("BOOM! Tabrakan!");
-            speed = -0.1; // Memantul sedikit
-        }
-    });
-
-    // Kamera Mengikuti Mobil
-    const offset = new THREE.Vector3(0, 3, 7); // Posisi kamera di belakang mobil
-    const cameraPos = offset.applyMatrix4(car.matrixWorld);
-    camera.position.lerp(cameraPos, 0.1); // Smooth camera follow
-    camera.lookAt(car.position);
 }
+
+// --- 5. AUDIO MESIN ---
+let audioCtx, oscillator;
+function initAudio() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(50, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+    oscillator.connect(gain);
+    gain.connect(audioCtx.destination);
+    oscillator.start();
+}
+
+// --- 6. LOGIKA GAME ---
+let speed = 0, score = 0;
+const keys = {};
+window.onkeydown = (e) => { 
+    keys[e.code] = true; 
+    if(!audioCtx) initAudio(); 
+    if(audioCtx?.state === 'suspended') audioCtx.resume();
+};
+window.onkeyup = (e) => keys[e.code] = false;
 
 function animate() {
     requestAnimationFrame(animate);
-    update();
+
+    // Gerak
+    if (keys.ArrowUp) speed += 0.015;
+    if (keys.ArrowDown) speed -= 0.01;
+    speed *= 0.97; // Gesekan
+    car.translateZ(-speed);
+
+    if (Math.abs(speed) > 0.01) {
+        if (keys.ArrowLeft) car.rotation.y += 0.04;
+        if (keys.ArrowRight) car.rotation.y -= 0.04;
+    }
+
+    // Update Asap & Suara
+    createSmoke();
+    particles.forEach((p, i) => {
+        p.position.y += 0.02;
+        p.material.opacity -= 0.01;
+        if(p.material.opacity <= 0) {
+            scene.remove(p);
+            particles.splice(i, 1);
+        }
+    });
+    if(oscillator) oscillator.frequency.setTargetAtTime(50 + speed * 300, audioCtx.currentTime, 0.1);
+
+    // Tabrakan & Skor
+    score = Math.floor(Math.abs(car.position.z));
+    scoreElement.innerHTML = `SKOR: ${score}`;
+
+    const carBox = new THREE.Box3().setFromObject(car);
+    obstacles.forEach(obs => {
+        if(carBox.intersectsBox(new THREE.Box3().setFromObject(obs))) {
+            speed = -0.2; // Pantul
+            scoreElement.style.color = 'red';
+            setTimeout(() => scoreElement.style.color = 'white', 200);
+        }
+    });
+
+    // Kamera
+    const camPos = new THREE.Vector3(0, 3, 8).applyMatrix4(car.matrixWorld);
+    camera.position.lerp(camPos, 0.1);
+    camera.lookAt(car.position);
+
     renderer.render(scene, camera);
 }
-
-// Handle Resize Jendela
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
 
 animate();
