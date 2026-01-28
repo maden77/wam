@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaugeKu - Embed Gambar Lokal</title>
+    <title>TaugeKu - Embed & Object URL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
@@ -14,23 +14,26 @@
             border-color: #10b981 !important;
             background-color: #ecfdf5;
         }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
 
     <!-- Header -->
     <header class="bg-white shadow-sm">
-        <div class="max-w-4xl mx-auto px-6 py-4">
+        <div class="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
             <h1 class="text-xl font-bold text-green-600 flex items-center gap-2">
-                <span>🌱</span> TaugeKu Embedder
+                <span>🌱</span> TaugeKu Studio
             </h1>
+            <span class="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-500 font-medium">Versi 2.0 - Multi Method</span>
         </div>
     </header>
 
     <main class="max-w-4xl mx-auto px-6 py-12">
         <div class="text-center mb-10">
-            <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Embed Gambar ke HTML</h2>
-            <p class="text-slate-500">Ubah gambar lokal menjadi kode Base64 untuk ditempelkan langsung ke dalam website Anda.</p>
+            <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Munculkan Gambar Lokal</h2>
+            <p class="text-slate-500">Pilih metode terbaik untuk menampilkan gambar Anda di dalam kode.</p>
         </div>
 
         <!-- Area Drop & Input -->
@@ -55,88 +58,120 @@
             </div>
         </div>
 
-        <!-- Area Kode Embed (Base64) -->
-        <div id="embed-section" class="hidden space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
-                    Kode Embed HTML
-                </h3>
-                <button onclick="copyToClipboard()" class="text-xs bg-green-600 text-white px-3 py-1.5 rounded-md font-bold hover:bg-green-700 transition" id="copy-btn">
-                    Salin Kode
-                </button>
+        <!-- Section Hasil (Tabs) -->
+        <div id="result-section" class="hidden space-y-4">
+            <div class="flex gap-2 p-1 bg-slate-200 rounded-xl w-fit">
+                <button onclick="switchTab('objecturl')" id="tab-btn-objecturl" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white text-slate-800 shadow-sm">Object URL (Tercepat)</button>
+                <button onclick="switchTab('base64')" id="tab-btn-base64" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-800">Base64 (Embed)</button>
             </div>
-            <div class="bg-slate-900 rounded-xl p-4 overflow-hidden relative">
-                <pre class="text-green-400 text-xs overflow-x-auto whitespace-pre-wrap break-all max-h-[200px]" id="base64-output"></pre>
+
+            <!-- Tab Object URL -->
+            <div id="content-objecturl" class="tab-content active space-y-4">
+                <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex gap-3">
+                    <div class="text-blue-500">💡</div>
+                    <p class="text-sm text-blue-700"><b>Object URL</b> menciptakan link sementara. Sangat efisien untuk performa website karena browser tidak perlu memproses teks yang sangat panjang.</p>
+                </div>
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 text-sm">Link Sementara (Blob):</h3>
+                    <button onclick="copyText('objecturl-output', 'copy-btn-obj')" class="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-md font-bold hover:bg-black transition" id="copy-btn-obj">Salin Link</button>
+                </div>
+                <div class="bg-slate-900 rounded-xl p-4">
+                    <pre class="text-blue-400 text-xs overflow-x-auto whitespace-pre-wrap break-all" id="objecturl-output"></pre>
+                </div>
             </div>
-            <p class="text-[10px] text-slate-400 italic">Salin kode di atas dan gunakan sebagai nilai 'src' pada tag &lt;img&gt; di website Anda.</p>
+
+            <!-- Tab Base64 -->
+            <div id="content-base64" class="tab-content space-y-4">
+                <div class="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-3">
+                    <div class="text-amber-500">⚠️</div>
+                    <p class="text-sm text-amber-700"><b>Base64</b> mengubah gambar jadi teks. Bagus untuk file kecil agar tidak butuh file eksternal, tapi bisa memperlambat web jika gambarnya terlalu besar.</p>
+                </div>
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 text-sm">Kode Embed Base64:</h3>
+                    <button onclick="copyText('base64-output', 'copy-btn-b64')" class="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-md font-bold hover:bg-black transition" id="copy-btn-b64">Salin Kode</button>
+                </div>
+                <div class="bg-slate-900 rounded-xl p-4">
+                    <pre class="text-green-400 text-xs overflow-x-auto whitespace-pre-wrap break-all max-h-[200px]" id="base64-output"></pre>
+                </div>
+            </div>
         </div>
     </main>
 
     <script>
         const fileInput = document.getElementById('file-input');
-        const dropZone = document.getElementById('drop-zone');
         const previewContainer = document.getElementById('preview-container');
         const uploadPrompt = document.getElementById('upload-prompt');
         const imagePreview = document.getElementById('image-preview');
-        const embedSection = document.getElementById('embed-section');
-        const base64Output = document.getElementById('base64-output');
+        const resultSection = document.getElementById('result-section');
+        
+        const b64Output = document.getElementById('base64-output');
+        const objOutput = document.getElementById('objecturl-output');
+
+        let currentObjectURL = null;
 
         fileInput.addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
+                // 1. Proses Object URL (Metode Baru)
+                if (currentObjectURL) URL.revokeObjectURL(currentObjectURL); // Hapus memori lama
+                currentObjectURL = URL.createObjectURL(file);
+                objOutput.textContent = currentObjectURL;
+                imagePreview.src = currentObjectURL;
+
+                // 2. Proses Base64 (Metode Lama)
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    const base64String = e.target.result;
-                    imagePreview.src = base64String;
-                    
-                    // Tampilkan kode embed
-                    base64Output.textContent = `<img src="${base64String}" alt="Embedded Image">`;
+                    b64Output.textContent = `<img src="${e.target.result}" alt="Embedded Image">`;
                     
                     uploadPrompt.classList.add('hidden');
                     previewContainer.classList.remove('hidden');
-                    embedSection.classList.remove('hidden');
+                    resultSection.classList.remove('hidden');
                 }
                 reader.readAsDataURL(file);
             }
         });
 
-        function copyToClipboard() {
-            const text = base64Output.textContent;
-            const btn = document.getElementById('copy-btn');
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
+                b.classList.add('text-slate-600');
+            });
+
+            document.getElementById('content-' + tab).classList.add('active');
+            const activeBtn = document.getElementById('tab-btn-' + tab);
+            activeBtn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
+            activeBtn.classList.remove('text-slate-600');
+        }
+
+        function copyText(elementId, btnId) {
+            const text = document.getElementById(elementId).textContent;
+            const btn = document.getElementById(btnId);
             
-            // Gunakan metode fallback execCommand untuk iFrame
             const textArea = document.createElement("textarea");
             textArea.value = text;
             document.body.appendChild(textArea);
             textArea.select();
-            try {
-                document.execCommand('copy');
-                btn.textContent = "Tersalin!";
-                btn.classList.replace('bg-green-600', 'bg-blue-600');
-                setTimeout(() => {
-                    btn.textContent = "Salin Kode";
-                    btn.classList.replace('bg-blue-600', 'bg-green-600');
-                }, 2000);
-            } catch (err) {
-                console.error('Gagal menyalin', err);
-            }
+            document.execCommand('copy');
             document.body.removeChild(textArea);
+
+            const originalText = btn.textContent;
+            btn.textContent = "Tersalin!";
+            setTimeout(() => btn.textContent = originalText, 2000);
         }
 
         function resetUpload() {
             fileInput.value = '';
             uploadPrompt.classList.remove('hidden');
             previewContainer.classList.add('hidden');
-            embedSection.classList.add('hidden');
-            imagePreview.src = '#';
+            resultSection.classList.add('hidden');
+            if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
         }
 
-        // Drag & Drop Logic
+        // Drag & Drop
+        const dropZone = document.getElementById('drop-zone');
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-zone--over'); });
-        ['dragleave', 'dragend'].forEach(type => { dropZone.addEventListener(type, () => { dropZone.classList.remove('drop-zone--over'); }); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-zone--over'));
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             if (e.dataTransfer.files.length) {
