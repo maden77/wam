@@ -3,237 +3,368 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaugeKu - Persistent Storage</title>
+    <title>TaugeKu - Cloud Image Storage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .drop-zone--over {
-            border-color: #10b981 !important;
-            background-color: #ecfdf5;
-        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .glass-panel { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+        .loading-spinner { border-top-color: #10b981; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen">
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-20">
 
     <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
-        <div class="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
+    <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
             <h1 class="text-xl font-bold text-green-600 flex items-center gap-2">
-                <span>🌱</span> TaugeKu Studio
+                <span>🌱</span> TaugeKu Cloud
             </h1>
-            <div class="flex items-center gap-2">
-                <span id="status-storage" class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-400 font-bold uppercase tracking-wider">Offline Storage Active</span>
+            <div id="auth-status" class="flex items-center gap-3">
+                <div class="flex flex-col items-end">
+                    <span id="user-id-display" class="text-[10px] font-mono text-slate-400">Authenticating...</span>
+                    <span id="storage-status" class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-bold">Connecting...</span>
+                </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-6 py-12">
-        <div class="text-center mb-10">
-            <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Simpan Gambar di Browser</h2>
-            <p class="text-slate-500">Gambar akan tersimpan secara lokal dan muncul kembali meski halaman di-refresh.</p>
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Cloud HTML Image Generator</h2>
+            <p class="text-slate-500">Upload gambar ke cloud dan simpan history kode HTML Anda selamanya.</p>
         </div>
 
-        <!-- Area Drop & Input -->
-        <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-100 mb-8">
-            <div id="drop-zone" class="relative border-4 border-dashed border-slate-200 rounded-2xl p-10 flex flex-col items-center justify-center transition-all cursor-pointer hover:border-green-400 group">
-                <input type="file" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*">
-                
-                <div id="upload-prompt" class="text-center">
-                    <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <!-- Upload Area -->
+        <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-200 mb-8">
+            <div id="drop-zone" class="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer">
+                <input type="file" id="file-input" class="hidden" accept="image/*">
+                <div id="upload-prompt">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                     </div>
-                    <p class="text-lg font-bold text-slate-700">Pilih atau Seret Gambar</p>
-                    <p class="text-sm text-slate-400 mt-1">Otomatis tersimpan permanen di database browser Anda</p>
+                    <p class="text-lg font-bold text-slate-700">Klik atau Drop untuk Upload Cloud</p>
+                    <p class="text-sm text-slate-400 mt-1">PNG, JPG, WebP - Maks 1MB per file</p>
                 </div>
+                
+                <div id="uploading-state" class="hidden py-4">
+                    <div class="loading-spinner border-4 border-slate-200 rounded-full w-12 h-12 mx-auto mb-4"></div>
+                    <p class="text-green-600 font-bold">Sedang Menyimpan ke Cloud...</p>
+                </div>
+            </div>
+        </div>
 
-                <!-- Preview Area -->
-                <div id="preview-container" class="hidden w-full flex flex-col items-center gap-6">
-                    <div class="relative group">
-                        <img id="image-preview" src="#" alt="Preview" class="max-h-[300px] rounded-xl shadow-md border-4 border-white">
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition rounded-xl flex items-center justify-center">
-                             <p class="text-white font-bold text-sm">Gambar Tersimpan ✨</p>
-                        </div>
+        <!-- History Section -->
+        <div id="history-section" class="mb-10">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800">Riwayat Cloud Anda</h3>
+                <span id="history-count" class="text-xs font-bold bg-slate-200 px-2 py-1 rounded text-slate-600">0 Items</span>
+            </div>
+            <div id="history-list" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <!-- History items injected here -->
+                <div class="col-span-full py-10 text-center text-slate-400 italic">Belum ada riwayat gambar.</div>
+            </div>
+        </div>
+
+        <!-- Result Section (Dynamic) -->
+        <div id="result-section" class="hidden animate-in fade-in duration-500">
+            <div class="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-green-500 mb-6">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 id="active-filename" class="text-xl font-bold text-slate-800">filename.jpg</h3>
+                        <p class="text-sm text-slate-400">Cloud Storage active</p>
                     </div>
-                    <button onclick="deleteStoredData()" class="text-sm font-bold text-red-500 hover:text-red-700 transition flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Hapus Permanen
+                    <button onclick="closeResult()" class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
-            </div>
-        </div>
 
-        <!-- Section Hasil -->
-        <div id="result-section" class="hidden space-y-4">
-            <div class="flex gap-2 p-1 bg-slate-200 rounded-xl w-fit">
-                <button onclick="switchTab('objecturl')" id="tab-btn-objecturl" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white text-slate-800 shadow-sm">Persistent Link</button>
-                <button onclick="switchTab('base64')" id="tab-btn-base64" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-800">Base64 Code</button>
-            </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <div class="rounded-xl overflow-hidden border bg-slate-100 flex items-center justify-center min-h-[200px]">
+                            <img id="active-preview" class="max-w-full max-h-[400px] object-contain shadow-sm">
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="deleteCurrent()" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition">Hapus Permanen</button>
+                            <button onclick="downloadActive()" class="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition">Download HTML</button>
+                        </div>
+                    </div>
 
-            <!-- Tab Object URL -->
-            <div id="content-objecturl" class="tab-content active space-y-4">
-                <div class="bg-green-50 border border-green-100 p-4 rounded-2xl flex gap-3">
-                    <div class="text-green-500">🛡️</div>
-                    <p class="text-sm text-green-700">Link ini dibuat dari <b>IndexedDB</b>. Meskipun Anda me-refresh halaman, kami memulihkan data dari database sehingga link tetap bekerja secara "permanen" di browser ini.</p>
-                </div>
-                <div class="flex justify-between items-center">
-                    <h3 class="font-bold text-slate-800 text-sm">Link Blob (Aktif):</h3>
-                    <button onclick="copyText('objecturl-output', 'copy-btn-obj')" class="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-md font-bold hover:bg-black transition" id="copy-btn-obj">Salin Link</button>
-                </div>
-                <div class="bg-slate-900 rounded-xl p-4">
-                    <pre class="text-blue-400 text-xs overflow-x-auto whitespace-pre-wrap break-all" id="objecturl-output"></pre>
-                </div>
-            </div>
+                    <div class="space-y-6">
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <button onclick="showTab('html')" class="tab-btn flex-1 py-2 text-sm font-bold rounded-lg transition active-tab">HTML</button>
+                            <button onclick="showTab('css')" class="tab-btn flex-1 py-2 text-sm font-bold rounded-lg transition">CSS</button>
+                            <button onclick="showTab('data')" class="tab-btn flex-1 py-2 text-sm font-bold rounded-lg transition">Base64</button>
+                        </div>
 
-            <!-- Tab Base64 -->
-            <div id="content-base64" class="tab-content space-y-4">
-                <div class="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-3">
-                    <div class="text-amber-500">📄</div>
-                    <p class="text-sm text-amber-700">Gunakan kode di bawah jika Anda ingin menanamkan gambar langsung ke dalam file HTML/CSS tanpa membutuhkan file eksternal sama sekali.</p>
-                </div>
-                <div class="flex justify-between items-center">
-                    <h3 class="font-bold text-slate-800 text-sm">HTML Embed Code:</h3>
-                    <button onclick="copyText('base64-output', 'copy-btn-b64')" class="text-xs bg-slate-800 text-white px-3 py-1.5 rounded-md font-bold hover:bg-black transition" id="copy-btn-b64">Salin Kode</button>
-                </div>
-                <div class="bg-slate-900 rounded-xl p-4">
-                    <pre class="text-green-400 text-xs overflow-x-auto whitespace-pre-wrap break-all max-h-[200px]" id="base64-output"></pre>
+                        <!-- HTML Tab -->
+                        <div id="tab-html" class="tab-content active space-y-4">
+                            <div class="bg-slate-900 rounded-xl p-4 relative group">
+                                <pre id="code-html" class="text-green-400 text-xs overflow-x-auto whitespace-pre-wrap font-mono h-40"></pre>
+                                <button onclick="copyContent('code-html')" class="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white text-[10px] px-2 py-1 rounded">Copy</button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="applyStyle('modern')" class="text-xs border px-3 py-1 rounded-full hover:bg-slate-50">Modern</button>
+                                <button onclick="applyStyle('circle')" class="text-xs border px-3 py-1 rounded-full hover:bg-slate-50">Circle</button>
+                                <button onclick="applyStyle('shadow')" class="text-xs border px-3 py-1 rounded-full hover:bg-slate-50">Shadow</button>
+                            </div>
+                        </div>
+
+                        <!-- CSS Tab -->
+                        <div id="tab-css" class="tab-content space-y-4">
+                            <div class="bg-slate-900 rounded-xl p-4 relative">
+                                <pre id="code-css" class="text-blue-400 text-xs overflow-x-auto whitespace-pre-wrap font-mono h-40"></pre>
+                                <button onclick="copyContent('code-css')" class="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white text-[10px] px-2 py-1 rounded">Copy</button>
+                            </div>
+                        </div>
+
+                        <!-- Data Tab -->
+                        <div id="tab-data" class="tab-content space-y-4">
+                            <div class="bg-slate-900 rounded-xl p-4 relative">
+                                <pre id="code-base64" class="text-yellow-400 text-[10px] overflow-y-auto h-40 break-all"></pre>
+                                <button onclick="copyContent('code-base64')" class="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white text-[10px] px-2 py-1 rounded">Copy Full</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <script>
-        /**
-         * LOGIK DATABASE (IndexedDB)
-         * Digunakan untuk membuat penyimpanan "permanen" di browser.
-         */
-        const DB_NAME = 'TaugeKuDB';
-        const DB_VERSION = 1;
-        const STORE_NAME = 'images';
-        let db;
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-slate-900 text-white rounded-full shadow-2xl text-sm font-bold opacity-0 transition-opacity pointer-events-none z-[100]">
+        Action completed
+    </div>
 
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onupgradeneeded = (e) => {
-            db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Config & State
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'tauge-ku-app';
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let user = null;
+        let activeImageId = null;
+        let imagesList = [];
+
+        // Auth Logic
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Error:", err);
+                showToast("Connection failed. Refresh page.");
             }
         };
-        request.onsuccess = (e) => {
-            db = e.target.result;
-            loadStoredImage(); // Cek apakah ada gambar tersimpan saat startup
-        };
 
-        const fileInput = document.getElementById('file-input');
-        const previewContainer = document.getElementById('preview-container');
-        const uploadPrompt = document.getElementById('upload-prompt');
-        const imagePreview = document.getElementById('image-preview');
-        const resultSection = document.getElementById('result-section');
-        const b64Output = document.getElementById('base64-output');
-        const objOutput = document.getElementById('objecturl-output');
-        let currentObjectURL = null;
+        initAuth();
 
-        // Handler saat file dipilih
-        fileInput.addEventListener('change', async function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const base64Data = e.target.result;
-                    // Simpan ke IndexedDB
-                    saveToDB({ id: 'current_img', blob: file, base64: base64Data });
-                    displayData(file, base64Data);
-                };
-                reader.readAsDataURL(file);
+        onAuthStateChanged(auth, (u) => {
+            user = u;
+            if (user) {
+                document.getElementById('user-id-display').textContent = `ID: ${user.uid}`;
+                document.getElementById('storage-status').textContent = "Cloud Sync Active";
+                document.getElementById('storage-status').className = "text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold";
+                listenToHistory();
             }
         });
 
-        function saveToDB(data) {
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
-            transaction.objectStore(STORE_NAME).put(data);
+        // Firestore Listener
+        function listenToHistory() {
+            if (!user) return;
+            const historyRef = collection(db, 'artifacts', appId, 'users', user.uid, 'images');
+            
+            onSnapshot(historyRef, (snapshot) => {
+                imagesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                
+                renderHistory();
+            }, (error) => {
+                console.error("Snapshot Error:", error);
+                showToast("Failed to fetch cloud history.");
+            });
         }
 
-        function loadStoredImage() {
-            const transaction = db.transaction([STORE_NAME], 'readonly');
-            const request = transaction.objectStore(STORE_NAME).get('current_img');
-            request.onsuccess = () => {
-                if (request.result) {
-                    displayData(request.result.blob, request.result.base64);
+        // Render History UI
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            document.getElementById('history-count').textContent = `${imagesList.length} Items`;
+            
+            if (imagesList.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-10 text-center text-slate-400 italic">Belum ada riwayat gambar di cloud.</div>`;
+                return;
+            }
+
+            container.innerHTML = imagesList.map(img => `
+                <div onclick="window.selectImage('${img.id}')" class="group relative bg-white rounded-xl overflow-hidden shadow-sm border hover:border-green-400 hover:shadow-md transition-all cursor-pointer aspect-square">
+                    <img src="${img.base64}" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span class="text-white text-[10px] font-bold">PILIH</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // UI Action Handlers
+        window.selectImage = (id) => {
+            const img = imagesList.find(i => i.id === id);
+            if (!img) return;
+            
+            activeImageId = id;
+            document.getElementById('active-filename').textContent = img.name;
+            document.getElementById('active-preview').src = img.base64;
+            document.getElementById('result-section').classList.remove('hidden');
+            
+            updateCodes(img.base64);
+            document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        function updateCodes(base64) {
+            document.getElementById('code-html').textContent = `<img src="${base64}" alt="Cloud Image" class="rounded-lg shadow-lg max-w-full">`;
+            document.getElementById('code-css').textContent = `.cloud-bg {\n  background-image: url("${base64}");\n  background-size: cover;\n  background-position: center;\n}`;
+            document.getElementById('code-base64').textContent = base64;
+        }
+
+        window.closeResult = () => {
+            document.getElementById('result-section').classList.add('hidden');
+            activeImageId = null;
+        };
+
+        window.deleteCurrent = async () => {
+            if (!user || !activeImageId) return;
+            if (!confirm("Hapus gambar ini dari cloud?")) return;
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'images', activeImageId);
+                await deleteDoc(docRef);
+                showToast("Deleted from cloud");
+                closeResult();
+            } catch (err) {
+                showToast("Delete failed");
+            }
+        };
+
+        // File Processing
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+
+        dropZone.onclick = () => fileInput.click();
+
+        fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+        async function handleFile(file) {
+            if (!file) return;
+            if (!user) {
+                showToast("Please wait for connection...");
+                return;
+            }
+
+            if (file.size > 1 * 1024 * 1024) {
+                alert("Maksimal 1MB untuk Cloud Storage. Gunakan gambar yang lebih kecil.");
+                return;
+            }
+
+            document.getElementById('upload-prompt').classList.add('hidden');
+            document.getElementById('uploading-state').classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64 = e.target.result;
+                const imageId = crypto.randomUUID();
+                
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'images', imageId), {
+                        name: file.name,
+                        base64: base64,
+                        type: file.type,
+                        createdAt: serverTimestamp()
+                    });
+                    
+                    showToast("Uploaded successfully!");
+                    window.selectImage(imageId);
+                } catch (err) {
+                    console.error(err);
+                    showToast("Upload failed");
+                } finally {
+                    document.getElementById('upload-prompt').classList.remove('hidden');
+                    document.getElementById('uploading-state').classList.add('hidden');
+                    fileInput.value = '';
                 }
             };
+            reader.readAsDataURL(file);
         }
 
-        function displayData(blob, base64) {
-            if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
+        // Helpers
+        window.showTab = (tabName) => {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab', 'bg-white', 'shadow-sm'));
             
-            // Buat Object URL baru (berlaku selama sesi ini)
-            currentObjectURL = URL.createObjectURL(blob);
-            
-            imagePreview.src = currentObjectURL;
-            objOutput.textContent = currentObjectURL;
-            b64Output.textContent = `<img src="${base64}" alt="TaugeKu Persistent Image">`;
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.innerText.toLowerCase().includes(tabName));
+            if (btn) btn.classList.add('active-tab', 'bg-white', 'shadow-sm');
+        };
 
-            uploadPrompt.classList.add('hidden');
-            previewContainer.classList.remove('hidden');
-            resultSection.classList.remove('hidden');
-        }
-
-        function deleteStoredData() {
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
-            transaction.objectStore(STORE_NAME).delete('current_img');
-            
-            fileInput.value = '';
-            uploadPrompt.classList.remove('hidden');
-            previewContainer.classList.add('hidden');
-            resultSection.classList.add('hidden');
-            if (currentObjectURL) URL.revokeObjectURL(currentObjectURL);
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
-                b.classList.add('text-slate-600');
-            });
-            document.getElementById('content-' + tab).classList.add('active');
-            const activeBtn = document.getElementById('tab-btn-' + tab);
-            activeBtn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
-        }
-
-        function copyText(elementId, btnId) {
-            const text = document.getElementById(elementId).textContent;
-            const btn = document.getElementById(btnId);
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.select();
+        window.copyContent = (id) => {
+            const text = document.getElementById(id).textContent;
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
             document.execCommand('copy');
-            document.body.removeChild(textArea);
-            const originalText = btn.textContent;
-            btn.textContent = "Tersalin!";
-            setTimeout(() => btn.textContent = originalText, 2000);
-        }
+            document.body.removeChild(temp);
+            showToast("Copied to clipboard!");
+        };
 
-        // Drag & Drop Logic
-        const dropZone = document.getElementById('drop-zone');
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drop-zone--over'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-zone--over'));
+        window.showToast = (msg) => {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.opacity = '1';
+            setTimeout(() => t.style.opacity = '0', 2500);
+        };
+
+        window.applyStyle = (style) => {
+            const base64 = document.getElementById('code-base64').textContent;
+            let html = '';
+            if (style === 'modern') html = `<img src="${base64}" style="border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eee;">`;
+            if (style === 'circle') html = `<img src="${base64}" style="width: 200px; height: 200px; object-fit: cover; border-radius: 50%; border: 5px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">`;
+            if (style === 'shadow') html = `<img src="${base64}" style="filter: drop-shadow(0 20px 20px rgba(0,0,0,0.15)); max-width: 100%;">`;
+            document.getElementById('code-html').textContent = html;
+        };
+
+        window.downloadActive = () => {
+            const html = document.getElementById('code-html').textContent;
+            const fullHtml = `<!DOCTYPE html><html><body style="display:flex;justify-content:center;padding:50px;background:#f8fafc;">${html}</body></html>`;
+            const blob = new Blob([fullHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "taugeku-cloud.html";
+            a.click();
+        };
+
+        // Drag events
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-green-500', 'bg-green-50'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-green-500', 'bg-green-50'); });
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            if (e.dataTransfer.files.length) {
-                fileInput.files = e.dataTransfer.files;
-                fileInput.dispatchEvent(new Event('change'));
-            }
-            dropZone.classList.remove('drop-zone--over');
+            dropZone.classList.remove('border-green-500', 'bg-green-50');
+            handleFile(e.dataTransfer.files[0]);
         });
+
     </script>
 </body>
 </html>
