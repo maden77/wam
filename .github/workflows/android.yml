@@ -1,37 +1,64 @@
-name: WAM APK
+name: Build APK Buku Catatan
 on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Ambil Kode
-        uses: actions/checkout@v4
-      
-      - name: Cek Struktur File
-        run: ls -R # Ini untuk melihat apakah file kamu sudah masuk ke GitHub
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0' # Mengunci versi agar stabil
           channel: 'stable'
 
-      - name: Install Dependencies
-        run: flutter pub get
+      - name: Create Project and Code
+        run: |
+          # Membuat proyek flutter baru di dalam mesin GitHub
+          flutter create catatan_app --project-name catatan_app --platforms android
+          cd catatan_app
+          
+          # Menulis kode aplikasi buku catatan ke main.dart
+          cat <<EOF > lib/main.dart
+          import 'package:flutter/material.dart';
 
-      - name: Build APK Debug
-        run: flutter build apk --debug
+          void main() => runApp(MaterialApp(home: CatatanSederhana()));
 
-      - name: Upload Hasil APK
-        if: success() # Hanya upload jika build berhasil
+          class CatatanSederhana extends StatefulWidget {
+            @override
+            _CatatanSederhanaState createState() => _CatatanSederhanaState();
+          }
+
+          class _CatatanSederhanaState extends State<CatatanSederhana> {
+            List<String> notes = [];
+            final controller = TextEditingController();
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(title: Text("Buku Catatan Maden")),
+                body: ListView.builder(
+                  itemCount: notes.length,
+                  itemBuilder: (context, i) => ListTile(title: Text(notes[i])),
+                ),
+                bottomSheet: Row(
+                  children: [
+                    Expanded(child: TextField(controller: controller)),
+                    IconButton(icon: Icon(Icons.add), onPressed: () {
+                      setState(() { notes.add(controller.text); controller.clear(); });
+                    })
+                  ],
+                ),
+              );
+            }
+          }
+          EOF
+
+      - name: Build APK
+        run: |
+          cd catatan_app
+          flutter build apk --debug
+
+      - name: Upload APK ke Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: APK-Buku-Catatan
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: Hasil-APK-Buku-Catatan
+          path: catatan_app/build/app/outputs/flutter-apk/app-debug.apk
