@@ -1,34 +1,19 @@
-name: Build Flutter APK
-
-on:
-  push:
-    branches: [ main ] # Jalankan setiap kali kamu push ke branch main
+name: Build Android APK
+on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-          
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          
-      - name: Ambil Dependencies
-        run: flutter pub get
-        
-      - name: Build APK
-        run: flutter build apk --debug # --debug agar cepat, gunakan --release untuk hasil akhir
-        
-      - name: Upload APK ke GitHub
+      - run: flutter pub get
+      - run: flutter build apk --debug # Ini yang akan menghasilkan file .apk
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: aplikasi-catatan
+          name: AplikasiCatatan # Nama folder saat di-download nanti
           path: build/app/outputs/flutter-apk/app-debug.apk
