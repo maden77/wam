@@ -1,64 +1,84 @@
-name: Build APK Buku Catatan
+name: Build APK Otomatis
 on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Ambil Kode
+        uses: actions/checkout@v4
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      - name: Create Project and Code
+      - name: Generate Proyek & Build
         run: |
-          # Membuat proyek flutter baru di dalam mesin GitHub
-          flutter create catatan_app --project-name catatan_app --platforms android
-          cd catatan_app
+          # 1. Membuat struktur proyek Flutter (termasuk pubspec.yaml otomatis)
+          flutter create --project-name buku_catatan --platforms android .
           
-          # Menulis kode aplikasi buku catatan ke main.dart
+          # 2. Menimpa file main.dart dengan kode milikmu
           cat <<EOF > lib/main.dart
           import 'package:flutter/material.dart';
 
-          void main() => runApp(MaterialApp(home: CatatanSederhana()));
+          void main() => runApp(NotesApp());
 
-          class CatatanSederhana extends StatefulWidget {
+          class NotesApp extends StatelessWidget {
             @override
-            _CatatanSederhanaState createState() => _CatatanSederhanaState();
+            Widget build(BuildContext context) {
+              return MaterialApp(home: NotesScreen(), debugShowCheckedModeBanner: false);
+            }
           }
 
-          class _CatatanSederhanaState extends State<CatatanSederhana> {
+          class NotesScreen extends StatefulWidget {
+            @override
+            _NotesScreenState createState() => _NotesScreenState();
+          }
+
+          class _NotesScreenState extends State<NotesScreen> {
             List<String> notes = [];
-            final controller = TextEditingController();
+            final TextEditingController _controller = TextEditingController();
+
+            void addNote() {
+              if (_controller.text.isNotEmpty) {
+                setState(() {
+                  notes.add(_controller.text);
+                  _controller.clear();
+                });
+              }
+            }
 
             @override
             Widget build(BuildContext context) {
               return Scaffold(
-                appBar: AppBar(title: Text("Buku Catatan Maden")),
+                appBar: AppBar(title: Text("Buku Catatan Saya")),
                 body: ListView.builder(
                   itemCount: notes.length,
-                  itemBuilder: (context, i) => ListTile(title: Text(notes[i])),
+                  itemBuilder: (context, index) => ListTile(
+                    title: Text(notes[index]),
+                    trailing: IconButton(icon: Icon(Icons.delete), onPressed: () => setState(() => notes.removeAt(index))),
+                  ),
                 ),
-                bottomSheet: Row(
-                  children: [
-                    Expanded(child: TextField(controller: controller)),
-                    IconButton(icon: Icon(Icons.add), onPressed: () {
-                      setState(() { notes.add(controller.text); controller.clear(); });
-                    })
-                  ],
+                bottomSheet: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Row(
+                    children: [
+                      Expanded(child: TextField(controller: _controller, decoration: InputDecoration(hintText: "Tulis catatan..."))),
+                      IconButton(icon: Icon(Icons.add), onPressed: addNote)
+                    ],
+                  ),
                 ),
               );
             }
           }
           EOF
 
-      - name: Build APK
-        run: |
-          cd catatan_app
+          # 3. Rakit menjadi APK
           flutter build apk --debug
 
-      - name: Upload APK ke Artifacts
+      - name: Upload Hasil APK
         uses: actions/upload-artifact@v4
         with:
-          name: Hasil-APK-Buku-Catatan
-          path: catatan_app/build/app/outputs/flutter-apk/app-debug.apk
+          name: Aplikasi-Catatan-Maden
+          path: build/app/outputs/flutter-apk/app-debug.apk
