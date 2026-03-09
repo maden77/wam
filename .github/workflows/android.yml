@@ -1,13 +1,17 @@
-name: Build Android APK
+name: WAM APK
 on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Ambil Kode
+        uses: actions/checkout@v4
       
-      - name: set up JDK 17
+      - name: Cek Struktur File
+        run: ls -R # Ini untuk melihat apakah file kamu sudah masuk ke GitHub
+
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -16,13 +20,18 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.19.0' # Mengunci versi agar stabil
           channel: 'stable'
 
-      - name: Build APK
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build APK Debug
         run: flutter build apk --debug
 
-      - name: Upload APK
+      - name: Upload Hasil APK
+        if: success() # Hanya upload jika build berhasil
         uses: actions/upload-artifact@v4
         with:
-          name: AplikasiCatatan
+          name: APK-Buku-Catatan
           path: build/app/outputs/flutter-apk/app-debug.apk
